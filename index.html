@@ -1,0 +1,211 @@
+<!DOCTYPE html>
+
+<html>
+<head>
+<meta http-equiv="Content-Type" content="text/html; charset=UTF-8" />
+<title>SheetJS Live Demo</title>
+<style>
+#drop, #drop1{
+	border:2px dashed #bbb;
+	-moz-border-radius:5px;
+	-webkit-border-radius:5px;
+	border-radius:5px;
+	padding:25px;
+	text-align:center;
+	font:20pt bold,"Vollkorn";color:#bbb
+}
+
+</style>
+</head>
+<body>
+
+<table>
+  <tr>
+    <td>
+	<pre>
+	(Base64 text works back to IE6; drag and drop works back to IE10)
+	<div id="drop">Drop a spreadsheet file here to see sheet data</div>
+    <input type="file" name="xlfile" id="xlf" /> ... or click here to select a file
+	</pre>
+    </td>
+	<td>
+	<pre>
+	(Base64 text works back to IE6; drag and drop works back to IE10)
+	<div id="drop1">Drop a spreadsheet file here to see sheet data</div>
+    <input type="file" name="xlfile1" id="xlf1" /> ... or click here to select a file
+	</pre>
+    </td>
+  </tr>
+  <tr>
+  <td><button onclick="consolidate()">consolidate</button></td>
+  </tr>
+  <tr>
+	<td><pre id="out"></pre></td>
+	<td><pre id="out1"></pre></td>
+  </tr>
+<br />
+<!-- uncomment the next line here and in xlsxworker.js for encoding support -->
+<script src="cpexcel.js"></script>
+<script src="shim.js"></script>
+<script src="jszip.js"></script>
+<script src="xlsx.js"></script>
+<script>
+/*jshint browser:true */
+/* eslint-env browser */
+/*global Uint8Array, console */
+/*global XLSX */
+/* eslint no-use-before-define:0 */
+var X = XLSX;
+var global_wb;
+var process_wb = (function() {
+	var OUT = document.getElementById('out');
+	var OUT1 = document.getElementById('out1');
+
+	var to_csv = function to_csv(workbook) {
+		var result = [];
+		workbook.SheetNames.forEach(function(sheetName) {
+			var csv = X.utils.sheet_to_csv(workbook.Sheets[sheetName]);
+			//omitting first three useless rows
+			var omitLine = csv.split("\n", 2).join("\n").length
+			if(csv.length){
+				result.push(csv.substr(omitLine,csv.length));
+			}
+		});
+		return result.join("\n");
+	};
+
+	return function process_wb(wb,excelnum) {
+		global_wb = wb;
+		var output = "";
+		output = to_csv(wb);
+		if (excelnum===0){
+		if(OUT.innerText === undefined) OUT.textContent = output;
+		else OUT.innerText = output;
+		if(typeof console !== 'undefined') console.log("output", new Date());
+		}
+		else{
+		if(OUT1.innerText === undefined) OUT1.textContent = output;
+		else OUT1.innerText = output;
+		if(typeof console !== 'undefined') console.log("output", new Date());
+		}
+	};
+})();
+
+var do_file = (function() {
+
+	return function do_file(files,filenumber) {
+		var f = files[0];
+		if (f.name.includes(".xls")){
+			var reader = new FileReader();
+			reader.onload = function(e) {
+				var data = e.target.result;
+				process_wb(X.read(data, {type: true ? 'binary' : 'array'}),filenumber);
+			};
+			reader.readAsBinaryString(f);
+		}
+		else window.alert("please upload only excel files");
+	};
+	
+})();
+
+function consolidate() {
+	var OUT = document.getElementById('out');
+	var OUT1 = document.getElementById('out1');
+	if(OUT.innerText === ""){ window.alert("Please upload excel sheet 1"); return;}
+	if(OUT1.innerText === ""){ window.alert("Please upload excel sheet 2");return;}
+	text1 = OUT.innerText;
+	text2 = OUT1.innerText;
+	var missed = new Map();
+	var outrec = new Map();
+	
+	var lines1 = text1.split("\n");
+	lines1.forEach(function(line) {
+		var cells = line.split(",");
+		if (cells[1] === ""){//non contacts numbers
+			if (cells[4] === "Missed") missed.set(cells[3],0);
+			else outrec.set(cells[0],0);
+		}
+	});
+	
+	var lines2 = text2.split("\n");
+	lines2.forEach(function(line) {
+		var cells = line.split(",");
+		if (cells[1] === ""){//non contacts numbers
+			if (cells[4] === "Missed") missed.set(cells[3],0);
+			else outrec.set(cells[0],0);
+		}
+	});
+	for (var key of outrec.keys()){
+		if (missed.has(key)){
+			missed.delete(key)
+		}
+	}
+	OUT1.innerText="";
+	var consolidat= Array.from(missed.keys());
+	OUT.innerText = "TOTAL COUNT MISSED: " + consolidat.length + "\n"+consolidat.join("\n")
+	
+	
+
+}
+//drag drop events handlers
+(function() {
+	var drop1 = document.getElementById('drop1');
+	if(!drop1.addEventListener) return;
+
+	function handleDrop1(e) {
+		e.stopPropagation();
+		e.preventDefault();
+		do_file(e.dataTransfer.files,1);
+	}
+
+	function handleDragover1(e) {
+		e.stopPropagation();
+		e.preventDefault();
+		e.dataTransfer.dropEffect = 'copy';
+	}
+
+	drop1.addEventListener('dragenter', handleDragover1, false);
+	drop1.addEventListener('dragover', handleDragover1, false);
+	drop1.addEventListener('drop', handleDrop1, false);
+})();
+
+//drag drop event handlers
+(function() {
+	var drop = document.getElementById('drop');
+	if(!drop.addEventListener) return;
+
+	function handleDrop(e) {
+		e.stopPropagation();
+		e.preventDefault();
+		do_file(e.dataTransfer.files,0);
+	}
+
+	function handleDragover(e) {
+		e.stopPropagation();
+		e.preventDefault();
+		e.dataTransfer.dropEffect = 'copy';
+	}
+
+	drop.addEventListener('dragenter', handleDragover, false);
+	drop.addEventListener('dragover', handleDragover, false);
+	drop.addEventListener('drop', handleDrop, false);
+})();
+
+//file upload handler
+(function() {
+	var xlf = document.getElementById('xlf');
+	if(!xlf.addEventListener) return;
+	function handleFile(e) { do_file(e.target.files,0); }
+	xlf.addEventListener('change', handleFile, false);
+})();
+
+//file upload handler
+(function() {
+	var xlf = document.getElementById('xlf1');
+	if(!xlf.addEventListener) return;
+	function handleFile(e) { do_file(e.target.files,1); }
+	xlf.addEventListener('change', handleFile, false);
+})();
+</script>
+</body>
+</html>
