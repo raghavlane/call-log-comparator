@@ -123,7 +123,7 @@ function consolidate() {
 		var cells = line.split(",");
 		if (cells[1] === ""){//non contacts numbers
 			if (cells[4] === "Missed") missed.set(cells[3],0);
-			else outrec.set(cells[0],0);
+			else outrec.set(cells[3],0);
 		}
 	});
 	
@@ -132,7 +132,7 @@ function consolidate() {
 		var cells = line.split(",");
 		if (cells[1] === ""){//non contacts numbers
 			if (cells[4] === "Missed") missed.set(cells[3],0);
-			else outrec.set(cells[0],0);
+			else outrec.set(cells[3],0);
 		}
 	});
 	for (var key of outrec.keys()){
@@ -140,7 +140,8 @@ function consolidate() {
 			missed.delete(key)
 		}
 	}
-	OUT1.innerText="";
+	recout = Array.from(outrec.keys());
+	OUT1.innerText="TOTAL COUNT RECEIVED AND OUT: " + recout.length + "\n"+recout.join("\n");
 	var consolidat= Array.from(missed.keys());
 	OUT.innerText = "TOTAL COUNT MISSED: " + consolidat.length + "\n"+consolidat.join("\n")
 	
